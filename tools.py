@@ -22,19 +22,20 @@ def web_search(query : str) ->str:
                "effect of US Iran war on India".
     """
 
-    results = tavily.search(query=query, max_results=2)
+    results = tavily.search(query=query, max_results=3)
     print("Debug: Web search results:", results)  # Debugging line
 
     out = []
     for r in results["results"]:
         out.append(
-            f"Title: {r['title']}\nURL: {r['url']}\nSnippet: {r['content'][:100]}\n"
+            f"Title: {r['title']}\nURL: {r['url']}\nSnippet: {r['content'][:550]}\n"
         )
     return "\n\n".join(out)
 
 
 
 
+scraped_urls = set()
 
 @tool
 def scrape_url(url: str) -> str:
@@ -50,6 +51,10 @@ def scrape_url(url: str) -> str:
     titles, IDs, or any other value.
     """
     try:
+        if url in scraped_urls:
+            return "This URL has already been scraped. Do not call scrape_url for this url again."
+
+            scraped_urls.add(url)
         print(f"Debug: Scraping URL: {url}")  # Debugging line
         resp = requests.get(url,timeout=8, headers={"User-Agent": "Mozilla/5.0"})
         soup = BeautifulSoup(resp.text, "html.parser")

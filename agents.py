@@ -10,6 +10,7 @@ from tools import web_search, scrape_url
 
 
 
+
 LLM = ChatGroq(model="openai/gpt-oss-120b",temperature=0)
 
 # agents
@@ -27,9 +28,9 @@ Use the web_search tool to search for relevant information.
 
 IMPORTANT:
 - Perform at only 1 web search for each topic.
-- After the searche, STOP.
+- After the search, STOP.
 - Do not call web_search again.
-- Return the collected search results, including titles, URLs and relevant content.
+- Return the collected search results as is as without any modifications.
     """
     )
 
@@ -38,20 +39,27 @@ def build_reader_agent():
     return create_agent(
         LLM,
         tools=[scrape_url],
-        system_prompt="""
+        system_prompt= """
 You are a research source reader.
 
 You will receive raw search results.
 
 Your job:
+1. Select exactly ONE most relevant URL.
+2. Call scrape_url exactly ONE time.
+3. Return the scraped content to the pipeline.
+4. Preserve the source URL.
 
-1. Select the 2 most relevant sources, only scrape 2 urls.
-2. Call scrape_url once for each selected URL.
-3. Extract factual information from those pages.
-4. Preserve the source URL with every source.
-5. Do not add information from your own knowledge.
-6. Do not make conclusions.
-7. Do not invent facts.
+Rules:
+- Only select ONE URL.
+- Only make ONE scrape_url call.
+- Do not call scrape_url again.
+- Do not summarize the content.
+- Do not interpret the content.
+- Do not add information from your own knowledge.
+- Do not make conclusions.
+- Do not invent facts.
+
 """
     )
 
@@ -66,19 +74,29 @@ writer_prompt = ChatPromptTemplate.from_messages([
     (
         "system",
         """
-        You are a research writer.
+You are an expert research writer.
 
-Use ONLY the verified scraped sources provided to you.
+Write a clear, engaging, and well-structured research report
+using ONLY the information provided in the research material.
+
 
 Rules:
-- Do not use your pretrained knowledge.
-- Do not invent facts.
-- Do not infer unsupported statistics.
-- Every factual claim must be supported by a provided source.
-- Clearly distinguish forecasts from established facts.
-- If evidence is insufficient, explicitly say so.
-- If sources disagree, report the disagreement.
-        """
+- Do not use outside knowledge.
+- Do not invent facts, statistics, claims, or sources.
+- Explain important findings clearly and provide useful context
+  from the research.
+- Keep the writing natural and easy to understand.
+- Maintain a logical flow between sections.
+- Avoid unnecessary repetition and overly technical language.
+- Do not use inline citations, footnotes, citation markers,
+  or academic-style references.
+- Do not use HTML tags such as <br>, <p>, or <div>.
+- Use clean Markdown formatting.
+-Do not add inline citations, citation markers, line references,
+footnotes, or academic-style references. example - 【1†L1-L4】.
+
+Only include the source URLs in the final Sources section.
+"""
     ),
     (
         "human",
@@ -117,6 +135,7 @@ critic_prompt = ChatPromptTemplate.from_messages([
     (
         "human",
         """Review the research report below and evaluate it strictly.
+        
 
 Report:
 {report}
